@@ -14,6 +14,25 @@
 #define NOINLINE
 #endif
 
+typedef struct {
+    int x, y, z, w;
+} MyStruct;
+
+NOINLINE void f8iiiiiiii(int a1,int a2,int a3,int a4,
+                         int a5,int a6,int a7,int a8) {
+    (void)a1;(void)a2;(void)a3;(void)a4;
+    (void)a5;(void)a6;(void)a7;(void)a8;
+}
+
+NOINLINE void f1s(MyStruct s) {
+    (void)s.x; (void)s.y; (void)s.z; (void)s.w;
+}
+
+NOINLINE MyStruct f_ret_s(void) {
+    MyStruct s = {1,2,3,4};
+    return s;
+}
+
 // 防优化：让编译器不消掉我们的操作
 volatile uint64_t sink_u64;
 
@@ -74,6 +93,9 @@ static void cb_f0(void){ f0(); }
 static void cb_f1i(void){ f1i(42); }
 static void cb_f2ii(void){ f2ii(1,2); }
 static void cb_f1d(void){ f1d(3.14); }
+static void cb_f8iiiiiiii(void){ f8iiiiiiii(1,2,3,4,5,6,7,8); }
+static void cb_f1s(void){ MyStruct s = {10,20,30,40}; f1s(s); }
+static void cb_f_ret_s(void){ MyStruct s = f_ret_s(); sink_u64 += s.x; }
 
 int main(void){
     const size_t N = 10*1000*1000ull; // 5千万次迭代；若机器慢可降到 10,000,000
@@ -83,10 +105,17 @@ int main(void){
     double c1i  = measure_call_cost_ns(cb_f1i,  N);
     double c2ii = measure_call_cost_ns(cb_f2ii, N);
     double c1d  = measure_call_cost_ns(cb_f1d,  N);
+    double c8i   = measure_call_cost_ns(cb_f8iiiiiiii, N);
+    double c1s   = measure_call_cost_ns(cb_f1s, N);
+    double cRets = measure_call_cost_ns(cb_f_ret_s, N);
 
-    printf("  f()            : %.3f ns/call\n", c0);
-    printf("  f(int)         : %.3f ns/call\n", c1i);
-    printf("  f(int,int)     : %.3f ns/call\n", c2ii);
-    printf("  f(double)      : %.3f ns/call\n", c1d);
+
+    printf("  f()            : %f ns/call\n", c0);
+    printf("  f(int)         : %f ns/call\n", c1i);
+    printf("  f(int,int)     : %f ns/call\n", c2ii);
+    printf("  f(double)      : %f ns/call\n", c1d);
+    printf("  f(int,…×8)     : %f ns/call\n", c8i);
+    printf("  f(struct)      : %f ns/call\n", c1s);
+    printf("  f()->struct    : %f ns/call\n", cRets);
     return 0;
 }
